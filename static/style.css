@@ -1,0 +1,104 @@
+/* General body and font styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+/* Headings */
+h1, h2 {
+    color: #333;
+    text-align: center;
+}
+
+/* Location, Speed, and Speed Limit Cards */
+#location-card, #speed-card, #speed-limit-card {
+    margin: 20px auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    width: 90%;
+    max-width: 600px;
+    text-align: center;
+    border-radius: 8px;
+}
+
+/* Speed Indicator */
+#speed-indicator {
+    margin: 20px auto;
+    padding: 15px;
+    color: white;
+    font-size: 1.5em;
+    text-align: center;
+    border-radius: 8px;
+    max-width: 600px;
+}
+
+/* Google Map */
+#map {
+    height: 500px;
+    width: 100%;
+    margin-top: 20px;
+    border: 1px solid #ddd;
+}
+
+/* Police Station and Hospital Cards */
+.police-station-card, 
+.hospital-card, 
+.fuels-stations-card {
+    margin: 15px auto;
+    padding: 15px;
+    width: 90%;
+    max-width: 600px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+.police-station-card h3, 
+.hospitals-card h3, 
+.fuels-stations-card h3 {
+    margin: 0 0 10px;
+    font-size: 1.2em;
+}
+
+/* Button Styles */
+.police-station-card button, 
+.hospitals-card button, 
+.fuels-stations-card button {
+    display: block;
+    margin-top: 10px;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.police-station-card button:hover, 
+.hospital-card button:hover, 
+.fuels-stations-card button:hover {
+    background-color: #0056b3;
+}
+
+
+
+
+
+/* Responsive layout */
+@media (max-width: 768px) {
+    #location-card, #speed-card, #speed-limit-card, .police-station-card, .hospital-card, .fuels-stations-card {
+        width: 95%;
+    }
+}
+
+
+
+
+  
+
+

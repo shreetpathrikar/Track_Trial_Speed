@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Top 5 Fuel Stations</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Top 5 Nearby Fuel Stations</h1>
+
+  <div id="fuels-list"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const lat = urlParams.get('lat');
+      const lng = urlParams.get('lng');
+
+      if (!lat || !lng) {
+        document.getElementById('fuels-list').innerHTML = '<p>Missing location parameters.</p>';
+        return;
+      }
+
+      fetch(`/get_nearby_fuel_stations?lat=${lat}&lng=${lng}`)
+        .then(response => response.json())
+        .then(data => {
+          const list = document.getElementById('fuels-list');
+          if (data.fuels && data.fuels.length > 0) {
+            data.fuels.forEach(fuel => {
+              const item = document.createElement('div');
+              item.className = 'police-station-card';
+              item.innerHTML = `
+                <h3>${fuel.name}</h3>
+                <p>${fuel.vicinity}</p>
+                <p>Distance: ${fuel.distance}</p>
+                <button onclick="window.location.href='https://www.google.com/maps/dir/?api=1&destination=${fuel.lat},${fuel.lng}'">View Directions</button>
+              `;
+              list.appendChild(item);
+            });
+          } else {
+            list.innerHTML = '<p>No nearby fuel stations found.</p>';
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching fuel stations:', error);
+          document.getElementById('fuels-list').innerHTML = '<p>Error fetching fuel stations.</p>';
+        });
+    });
+  </script>
+</body>
+</html>

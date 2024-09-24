@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-Time Location & Speed Tracker</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <style>
+      /* Ensure map is visible */
+      #map {
+        height: 500px;
+        width: 100%;
+        margin-top: 20px;
+        border: 1px solid #ddd;
+      }
+      #location-card,
+      #speed-card,
+      #speed-limit-card {
+        margin-top: 10px;
+        padding: 20px;
+        border: 1px solid #ddd;
+        background-color: #f9f9f9;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        width: 80%;
+        text-align: center;
+      }
+      #speed-indicator {
+        margin-top: 10px;
+        padding: 15px;
+        background-color: #00ff00;
+        color: white;
+        text-align: center;
+        font-size: 1.2em;
+
+
+
+
+      }
+      
+
+      .police-station-card,
+      .hospitals-card,
+      .fuels-stations-card{
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin: 10px 0;
+        background-color: #fff;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        width: 20%;
+      }
+      .fuels-stations-card h3,
+      .police-station-card h3,
+      .hospitals-card h3 {
+        margin: 0;
+      }
+      .police-station-card button,
+      .hospitals-card button,
+      .fuels-stations-card button {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      .police-station-card button:hover,
+      .hospitals-card button:hover,
+      .fuels-stations-card button:hover {
+        background-color: #0056b3;
+      }
+
+      /* Add your CSS styles here */
+        .speed-limit-card {
+            width: 100%;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        #audio-control {
+            margin: 10px 0;
+        }
+    </style>
+  </head>
+  <body>
+    <h1>Real-Time Location & Speed Tracker</h1>
+
+    <div id="location-card">
+      <h2>Location: <span id="location-value">Unknown</span></h2>
+    </div>
+
+    <div id="speed-card">
+      <h2>Current Speed: <span id="speed-value">0</span> km/h</h2>
+    </div>
+
+    <div id="speed-limit-card">
+      <h2>Speed Limit: <span id="speed-limit-value">Unknown</span> km/h</h2>
+    </div>
+
+    <div id="speed-indicator">Speed in limit</div>
+
+    <div id="map"></div>
+
+    <div id="police-stations-container" style="margin-top: 20px"></div>
+
+    <div id="hospital-container" style="margin-top: 20px"></div>
+
+    <div id="fuels-stations-container" style="margin-top: 20px"></div>
+
+
+
+    <div id="speed-limit-container"></div>
+
+    <div id="audio-control">
+        <button id="toggle-audio">Enable Audio</button>
+    </div>
+
+    <script
+      async
+      defer
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDP9Cyr-AzJGGXxZORu7Lee7rwhvtYtdTo&callback=initMap"
+    ></script>
+
+    <script>
+      let previousPosition = null;
+      let marker = null;
+
+      function initMap() {
+        const mapOptions = {
+          zoom: 15,
+          center: { lat: 28.6139, lng: 77.209 },
+        };
+
+        const map = new google.maps.Map(
+          document.getElementById("map"),
+          mapOptions
+        );
+        const speedValue = document.getElementById("speed-value");
+        const locationValue = document.getElementById("location-value");
+        const speedLimitValue = document.getElementById("speed-limit-value");
+        const speedIndicator = document.getElementById("speed-indicator");
+
+        if (navigator.geolocation) {
+          navigator.geolocation.watchPosition(
+            (position) => {
+              const pos = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+
+              getLocationName(pos.lat, pos.lng);
+              fetchNearbyPoliceStations(pos.lat, pos.lng);
+              fetchNearbyHospitals(pos.lat, pos.lng); 
+              fetchNearbyFuelStations(pos.lat, pos.lng);
+              map.setCenter(pos);
+
+              if (!marker) {
+                marker = new google.maps.Marker({
+                  position: pos,
+                  map: map,
+                  title: "Your Location",
+                });
+              } else {
+                marker.setPosition(pos);
+              }
+
+              calculateSpeed(position, previousPosition);
+              previousPosition = position;
+            },
+            (error) => {
+              console.error("Geolocation error:", error.message);
+              locationValue.innerText = "Unable to get location";
+            }
+          );
+        }
+
+        function calculateSpeed(currentPosition, previousPosition) {
+          if (!previousPosition) return 0;
+
+          const timeDifference =
+            (currentPosition.timestamp - previousPosition.timestamp) / 1000;
+          const lat1 = previousPosition.coords.latitude;
+          const lon1 = previousPosition.coords.longitude;
+          const lat2 = currentPosition.coords.latitude;
+          const lon2 = currentPosition.coords.longitude;
+
+          fetch("/calculate_speed", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lat1,
+              lon1,
+              lat2,
+              lon2,
+              time_difference: timeDifference,
+            }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              const speed = data.speed;
+              speedValue.innerText = speed.toFixed(2);
+
+              const speedLimit = parseFloat(speedLimitValue.innerText);
+              if (speed > speedLimit) {
+                speedIndicator.style.backgroundColor = "#ff0000";
+                speedIndicator.innerText = "Overspeeding";
+              } else {
+                speedIndicator.style.backgroundColor = "#00ff00";
+                speedIndicator.innerText = "Speed in limit";
+              }
+            });
+        }
+
+
+        function fetchNearbyPoliceStations(lat, lng) {
+          fetch(`/get_nearby_police_stations?lat=${lat}&lng=${lng}`)
+            .then((response) => response.json())
+            .then((data) => {
+              const nearestStation = data.nearest;
+              const container = document.getElementById(
+                "police-stations-container"
+              );
+              container.innerHTML = "";
+
+              if (nearestStation) {
+                const nearestCard = document.createElement("div");
+                nearestCard.className = "police-station-card";
+                nearestCard.innerHTML = `
+                <h3>Near By Police Station</h3>
+                <button onclick="window.location.href='/police.html?lat=${nearestStation.lat}&lng=${nearestStation.lng}'">View</button>
+              `;
+                container.appendChild(nearestCard);
+              } else {
+                container.innerHTML = "<p>No nearby police stations found.</p>";
+              }
+            })
+            .catch((error) =>
+              console.error("Error fetching police stations:", error)
+            );
+        }
+
+
+
+        function fetchNearbyFuelStations(lat, lng) {
+          fetch(`/get_nearby_fuel_stations?lat=${lat}&lng=${lng}`)
+            .then((response) => response.json())
+            .then((data) => {
+              const fuelStations = data.fuels;  // Access the fuel stations from the API response
+              const container = document.getElementById("fuels-stations-container");
+              container.innerHTML = "";  // Clear previous results
+    
+              if (fuelStations && fuelStations.length > 0) {
+                // Only display the nearest fuel station
+                const nearestStation = fuelStations[0];
+                const stationCard = document.createElement("div");
+                stationCard.className = "fuels-stations-card";
+                stationCard.innerHTML = `
+                  <h3>Nearby Fuel Station</h3>
+              
+                  <button onclick="window.location.href='/fuel.html?lat=${lat}&lng=${lng}'">View </button>
+                `;
+                container.appendChild(stationCard);
+              } else {
+                container.innerHTML = "<p>No nearby fuel stations found.</p>";
+              }
+            })
+            .catch((error) => {
+              console.error("Error fetching fuel stations:", error);
+              const container = document.getElementById("fuels-stations-container");
+              container.innerHTML = "<p>Error fetching fuel stations. Please try again later.</p>";
+            });
+        }
+        
+
+
+
+
+        function fetchNearbyHospitals(lat, lng) {
+          fetch(`/get_nearby_hospitals?lat=${lat}&lng=${lng}`)
+            .then((response) => response.json())
+            .then((data) => {
+              const hospitalContainer =
+                document.getElementById("hospital-container");
+              hospitalContainer.innerHTML = ""; // Clear the container first
+
+              // Display only one card for the nearby hospitals on index.html
+              const hospitalCard = document.createElement("div");
+              hospitalCard.className = "hospitals-card";
+
+              hospitalCard.innerHTML = `
+        <h3>Nearby Hospitals</h3>
+      
+        <button onclick="window.location.href='/hospital.html?lat=${lat}&lng=${lng}'">View</button>
+      `;
+
+              hospitalContainer.appendChild(hospitalCard);
+            })
+            .catch((error) =>
+              console.error("Error fetching hospitals:", error)
+            );
+        }
+
+        function getLocationName(lat, lng) {
+          const geocoder = new google.maps.Geocoder();
+          const latlng = { lat: parseFloat(lat), lng: parseFloat(lng) };
+
+          geocoder.geocode({ location: latlng }, function (results, status) {
+            if (status === "OK" && results[0]) {
+              locationValue.innerText = results[0].formatted_address;
+              fetch(
+                `/get_speed_limit/${encodeURIComponent(
+                  results[0].formatted_address
+                )}`
+              )
+                .then((response) => response.json())
+                .then((data) => {
+                  speedLimitValue.innerText = data.speed_limit;
+                });
+            }
+          });
+        }
+      }
+
+      let audioEnabled = true; // Track if audio is enabled
+
+        document.getElementById('toggle-audio').addEventListener('click', function() {
+            audioEnabled = !audioEnabled; // Toggle audio state
+            this.textContent = audioEnabled ? 'Disable Audio' : 'Enable Audio'; // Update button text
+        });
+
+        function checkNearbyInstitutions(lat, lng) {
+            fetch(`/get_nearby_institutions?lat=${lat}&lng=${lng}`)
+                .then(response => response.json())
+                .then(data => {
+                    const limitContainer = document.getElementById('speed-limit-container');
+                    limitContainer.innerHTML = ""; // Clear previous messages
+
+                    if (data.messages && data.messages.length > 0) {
+                        data.messages.forEach((message, index) => {
+                            const messageCard = document.createElement('div');
+                            messageCard.className = 'speed-limit-card'; // Add your card class
+                            messageCard.innerText = message;
+                            limitContainer.appendChild(messageCard);
+
+                            // Play the audio if audio is enabled
+                            if (audioEnabled && data.audio_files[index]) {
+                                const audio = new Audio(data.audio_files[index]);
+                                audio.play();
+                            }
+                        });
+                    } else {
+                        limitContainer.innerHTML = '<p>No nearby institutions found.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking nearby institutions:', error);
+                });
+        }
+    </script>
+  </body>
+</html>
